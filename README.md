@@ -1,6 +1,6 @@
 # DataSheep
 
-TBD
+structure of array (SoA) library which oriented to data analysis
 
 ## Concept
 
@@ -12,7 +12,7 @@ TBD
 
 ## Requirement
 
-- .Net Standard *2.0*
+- .Net *8.0*
 
 ## License
 

@@ -1,9 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.31005.135
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35312.102
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataSheep", "DataSheep\DataSheep.csproj", "{54E900D4-6613-409E-8505-B3A5E97E5852}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DataSheep", "DataSheep\DataSheep.csproj", "{54E900D4-6613-409E-8505-B3A5E97E5852}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{A979DBC9-EA8D-427B-89C1-3BC043AB149B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataSheep.Test", "tests\DataSheep.Test\DataSheep.Test.csproj", "{55067EDC-BDC0-4549-BF4D-EE2380D68F63}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,9 +19,16 @@ Global
 		{54E900D4-6613-409E-8505-B3A5E97E5852}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{54E900D4-6613-409E-8505-B3A5E97E5852}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{54E900D4-6613-409E-8505-B3A5E97E5852}.Release|Any CPU.Build.0 = Release|Any CPU
+		{55067EDC-BDC0-4549-BF4D-EE2380D68F63}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{55067EDC-BDC0-4549-BF4D-EE2380D68F63}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{55067EDC-BDC0-4549-BF4D-EE2380D68F63}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{55067EDC-BDC0-4549-BF4D-EE2380D68F63}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{55067EDC-BDC0-4549-BF4D-EE2380D68F63} = {A979DBC9-EA8D-427B-89C1-3BC043AB149B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7D948539-1872-4514-8B0E-CC3A89E8BF86}
