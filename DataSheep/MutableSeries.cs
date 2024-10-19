@@ -2,41 +2,65 @@ using System.Numerics;
 
 namespace DataSheep;
 
-public sealed class ArraySeries<T>
-    : ISeries<T>
+/// <summary>
+/// Implementation of <see cref="ISeries"/> which has data entity which can mutate.
+/// </summary>
+/// <typeparam name="T"></typeparam>
+public sealed class MutableSeries<T>
+    : IMutableSeries, ISeries<T>
 {
     private T[] _array;
 
+    /// <inheritdoc/>
     public string ColumnName { get; }
 
-    public int Capacity => _array.Length;
-    public int Count { get; private set; } = 0;
+    /// <inheritdoc/>
+    public int Count => _count;
+    private int _count = 0;
 
+    /// <summary>
+    /// Gets the maximum amount this series can be extended without reallocation.
+    /// </summary>
+    public int Capacity => _array.Length;
+
+    /// <summary> Gets or sets the element at the specified row index. </summary>
+    /// <param name="rowIndex"></param>
+    /// <returns></returns>
     public T this[int rowIndex]
     {
         get => (uint)rowIndex < (uint)Count ? _array[rowIndex] : throw new IndexOutOfRangeException();
         set => _array[rowIndex] = (uint)rowIndex < (uint)Count ? value : throw new IndexOutOfRangeException();
     }
+    object? IMutableSeries.this[int rowIndex]
+    {
+        get => this[rowIndex];
+        set => this[rowIndex] = value is T tvalue ? tvalue : throw new InvalidCastException();
+    }
 
-    public ArraySeries(string columnName, int initialMinimumCapacity)
+    internal MutableSeries(string columnName, int initialMinimumCapacity)
     {
         ColumnName = columnName;
         _array = new T[Math.Max(256, BitOperations.RoundUpToPowerOf2((uint)initialMinimumCapacity))];
     }
 
-    public ArraySeries(string columnName, ReadOnlySpan<T> initialValues)
+    internal MutableSeries(string columnName, ReadOnlySpan<T> initialValues)
     {
         ColumnName = columnName;
         _array = new T[Math.Max(256, BitOperations.RoundUpToPowerOf2((uint)initialValues.Length))];
         initialValues.CopyTo(_array);
-        Count = initialValues.Length;
+        _count = initialValues.Length;
     }
 
-    public ArraySeries<T1> As<T1>()
-        => this is ArraySeries<T1> typed ? typed : throw new InvalidCastException();
+    /// <inheritdoc/>
+    public MutableSeries<T1> As<T1>()
+        => this is MutableSeries<T1> typed
+            ? typed
+            : throw new InvalidCastException();
 
+    /// <inheritdoc/>
     ISeries<T1> ISeries.As<T1>() => As<T1>();
 
+    /// <inheritdoc/>
     public void Expand(int rowIndex, int expandCount)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(expandCount, 0);
@@ -47,9 +71,10 @@ public sealed class ArraySeries<T>
         {
             _array.AsSpan(rowIndex, Count - rowIndex).CopyTo(_array.AsSpan(rowIndex + expandCount));
         }
-        Count = newCount;
+        _count = newCount;
     }
 
+    /// <inheritdoc/>
     public void Shrink(int rowIndex, int shrinkCount)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(rowIndex, 0);
@@ -60,39 +85,67 @@ public sealed class ArraySeries<T>
         {
             _array.AsSpan(rowIndex + shrinkCount, Count - rowIndex - shrinkCount).CopyTo(_array.AsSpan(rowIndex));
         }
-        Count = newCount;
+        _count = newCount;
     }
 
+    /// <summary>
+    /// Adds a new element at the last.
+    /// </summary>
+    /// <param name="item"></param>
     public void Add(T item)
         => Insert(Count, item);
 
+    /// <summary>
+    /// Adds new elements at the last.
+    /// </summary>
+    /// <param name="items"></param>
     public void AddRange(ReadOnlySpan<T> items)
         => InsertRange(Count, items);
 
+    /// <summary>
+    /// Inserts a new element at the specified position.
+    /// </summary>
+    /// <param name="rowIndex"></param>
+    /// <param name="item"></param>
     public void Insert(int rowIndex, T item)
     {
         Expand(rowIndex, 1);
         _array[rowIndex] = item;
     }
 
+    /// <summary>
+    /// Inserts new elements at the specified position.
+    /// </summary>
+    /// <param name="rowIndex"></param>
+    /// <param name="items"></param>
     public void InsertRange(int rowIndex, ReadOnlySpan<T> items)
     {
         Expand(rowIndex, items.Length);
         items.CopyTo(_array.AsSpan(rowIndex));
     }
 
+    /// <summary>
+    /// Removes an element at the specified position.
+    /// </summary>
+    /// <param name="rowIndex"></param>
     public void RemoveAt(int rowIndex)
         => Shrink(rowIndex, 1);
 
+    /// <summary>
+    /// Removes elements at the specified range.
+    /// </summary>
+    /// <param name="rowIndex"></param>
     public void RemoveRange(int rowIndex, int count)
         => Shrink(rowIndex, count);
 
+    /// <inheritdoc />
     public void Clear()
     {
         _array.AsSpan().Clear();
-        Count = 0;
+        _count = 0;
     }
 
+    /// <inheritdoc />
     public void GetValues(int rowIndex, Span<T> destination)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(rowIndex, 0);
@@ -100,6 +153,11 @@ public sealed class ArraySeries<T>
         _array.AsSpan(rowIndex, destination.Length).CopyTo(destination);
     }
 
+    /// <summary>
+    /// Sets bulkly the elements at the specified range.
+    /// </summary>
+    /// <param name="rowIndex"></param>
+    /// <param name="source"></param>
     public void SetValues(int rowIndex, ReadOnlySpan<T> source)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(rowIndex, 0);
@@ -107,8 +165,12 @@ public sealed class ArraySeries<T>
         source.CopyTo(_array.AsSpan(rowIndex, source.Length));
     }
 
-    public ArraySeries<T> Copy()
+    /// <inheritdoc />
+    public MutableSeries<T> Clone()
         => new(ColumnName, _array);
+
+    IMutableSeries ISeries.Clone()
+        => Clone();
 
     private void ExtendBufferIfNeed(int newCount)
     {

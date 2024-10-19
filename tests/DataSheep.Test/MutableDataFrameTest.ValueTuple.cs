@@ -6,12 +6,12 @@ using System.Threading.Tasks;
 
 namespace DataSheep;
 
-public partial class DataFrameTest
+public partial class MutableDataFrameTest
 {
     [Fact]
     public void CreateValueTuple1()
     {
-        var dataFrame = DataFrame.Create<(int x, int y)>();
+        var dataFrame = MutableDataFrame.Create<(int x, int y)>();
         Assert.Equal("Column 1", dataFrame.ColumnNames[0]);
         Assert.Equal("Column 2", dataFrame.ColumnNames[1]);
     }
@@ -19,7 +19,7 @@ public partial class DataFrameTest
     [Fact]
     public void CreateValueTuple2()
     {
-        var dataFrame = DataFrame.Create<(int x, int y)>(columnNames: ["x", "y"]);
+        var dataFrame = MutableDataFrame.Create<(int x, int y)>(columnNames: ["x", "y"]);
         Assert.Equal("x", dataFrame.ColumnNames[0]);
         Assert.Equal("y", dataFrame.ColumnNames[1]);
     }
@@ -27,7 +27,7 @@ public partial class DataFrameTest
     [Fact]
     public void CreateValueTuple3()
     {
-        var dataFrame = DataFrame.Create<(int x1, int x2, int x3, int x4, int x5, int x6, int x7, int x8, int x9, int x10, int x11, int x12, int x13, int x14, int x15, int x16)>(columnNames: ["x", "y"]);
+        var dataFrame = MutableDataFrame.Create<(int x1, int x2, int x3, int x4, int x5, int x6, int x7, int x8, int x9, int x10, int x11, int x12, int x13, int x14, int x15, int x16)>(columnNames: ["x", "y"]);
         Assert.Equal("x", dataFrame.ColumnNames[0]);
         Assert.Equal("y", dataFrame.ColumnNames[1]);
         Assert.Equal("Column 3", dataFrame.ColumnNames[2]);

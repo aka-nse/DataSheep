@@ -1,0 +1,54 @@
+﻿<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".g.cs" #>
+namespace DataSheep;
+
+<#
+for(var i = 2; i <= 7; ++i)
+{
+    var typeArgs = CommaChain(i, x => $"T{x}");
+#>
+internal readonly struct ValueTupleStrategy<<#=typeArgs#>> : IRecordStrategy<(<#=typeArgs#>)>
+{
+    public static int ColumnCount => <#=i#>;
+
+    public static IMutableSeries[] CreateSeriesPrefab(int initialCapacity, IReadOnlyList<string> columnNames)
+        => [
+<#  for(var j = 0; j < i; ++j) { #>
+            new MutableSeries<T<#=j+1#>>(columnNames[<#=j#>], initialCapacity),
+<#  } #>
+        ];
+
+    public static void ReadFromSeries(ReadOnlySpan<ISeries> series, int rowIndex, Span<(<#=typeArgs#>)> destination)
+    {
+<#  for(var j = 0; j < i; ++j) { #>
+        var ser<#=j+1#> = series[<#=j#>].As<T<#=j+1#>>();
+<#  } #>
+        for(var i = 0; i < destination.Length; i++)
+        {
+            var j = rowIndex + i;
+            destination[i] = (<#=CommaChain(i, x => $"ser{x}[j]")#>);
+        }
+    }
+
+    public static void WriteToSeries(ReadOnlySpan<IMutableSeries> series, int rowIndex, ReadOnlySpan<(<#=typeArgs#>)> source)
+    {
+<#  for(var j = 0; j < i; ++j) { #>
+        var ser<#=j+1#> = series[<#=j#>].As<T<#=j+1#>>();
+<#  } #>
+        for(var i = 0; i < source.Length; i++)
+        {
+            var j = rowIndex + i;
+            (<#=CommaChain(i, x => $"ser{x}[j]")#>) = source[i];
+        }
+    }
+}
+
+<#  } #>
+<#+
+string CommaChain(int end, Func<int, string> predicate)
+    => string.Join(", ", Enumerable.Range(1, end).Select(predicate));
+#>

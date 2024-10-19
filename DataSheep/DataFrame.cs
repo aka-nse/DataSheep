@@ -1,16 +1,35 @@
+using System;
 using System.Collections;
-using System.ComponentModel;
+using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace DataSheep;
 
+/// <summary>
+/// Base type of <see cref="DataFrame{TRecord}"/>.
+/// </summary>
 public abstract partial class DataFrame
 {
+    /// <summary> Gets column names. </summary>
     public abstract IReadOnlyList<string> ColumnNames { get; }
+
+    /// <summary> Gets a number of rows. </summary>
     public abstract int RowCount { get; }
+
+    /// <summary> Gets an iterable object of the rows. </summary>
+    /// <returns></returns>
     public abstract IEnumerable AsEnumerable();
 }
 
+/// <summary>
+/// Provides a immutable data table for the specified type which is internally transformed into columnar oriented.
+/// </summary>
+/// <typeparam name="TRecord">
+/// The type to present one row.
+/// </typeparam>
 public abstract class DataFrame<TRecord> : DataFrame
     where TRecord : ITuple
 {
@@ -18,13 +37,13 @@ public abstract class DataFrame<TRecord> : DataFrame
     {
         private readonly DataFrame<TRecord> _owner = owner;
 
-        public int Count => _owner._series.Length;
+        public int Count => _owner.Series.Length;
 
-        public string this[int index] => _owner._series[index].ColumnName;
+        public string this[int index] => _owner.Series[index].ColumnName;
 
         public IEnumerator<string> GetEnumerator()
         {
-            foreach(var series in _owner._series)
+            foreach(var series in _owner.Series)
             {
                 yield return series.ColumnName;
             }
@@ -41,13 +60,8 @@ public abstract class DataFrame<TRecord> : DataFrame
         public IEnumerator<TRecord> GetEnumerator()
         {
             var rowCount = _owner.RowCount;
-            var generation = _owner._generation;
             for(var i = 0; i < rowCount; ++i)
             {
-                if(generation != _owner._generation)
-                {
-                    throw new InvalidOperationException();
-                }
                 yield return _owner[i];
             }
         }
@@ -55,15 +69,22 @@ public abstract class DataFrame<TRecord> : DataFrame
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
-    private uint _generation;
-    private readonly ISeries[] _series;
+    internal ISeries[] Series { get; }
 
     private readonly TRecord[] _temporaryBuffer = new TRecord[1];
 
+    /// <inheritdoc/>
     public sealed override IReadOnlyList<string> ColumnNames { get; }
 
-    public sealed override int RowCount => _series.FirstOrDefault()?.Count ?? 0;
+    /// <inheritdoc/>
+    public sealed override int RowCount => Series.FirstOrDefault()?.Count ?? 0;
 
+    /// <summary>
+    /// Gets the row at the specified row index.
+    /// </summary>
+    /// <param name="rowIndex"></param>
+    /// <returns></returns>
+    /// <exception cref="IndexOutOfRangeException"></exception>
     public TRecord this[int rowIndex]
     {
         get
@@ -72,85 +93,50 @@ public abstract class DataFrame<TRecord> : DataFrame
             {
                 throw new IndexOutOfRangeException();
             }
-            ReadFromSeries(_series, rowIndex, _temporaryBuffer);
+            ReadFromSeries(Series, rowIndex, _temporaryBuffer);
             return _temporaryBuffer[0];
-        }
-        set
-        {
-            if((uint)rowIndex >= (uint)RowCount)
-            {
-                throw new IndexOutOfRangeException();
-            }
-            _temporaryBuffer[0] = value;
-            WriteToSeries(_series, rowIndex, _temporaryBuffer);
-            ++_generation;
         }
     }
 
     private protected DataFrame(ISeries[] series)
     {
-        _series = series;
+        Series = series;
         ColumnNames = new ColumnNameList(this);
     }
 
+    /// <summary>
+    /// Gets mutable version of this without destruction.
+    /// </summary>
+    /// <returns></returns>
+    public MutableDataFrame<TRecord> CopyToMutable()
+    {
+        var series = new IMutableSeries[Series.Length];
+        for(var i = 0; i < series.Length; ++i)
+        {
+            series[i] = Series[i].Clone();
+        }
+        return RecordStrategy.CreateMutableDataFrame<TRecord>(series);
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="series"></param>
+    /// <param name="rowIndex"></param>
+    /// <param name="destination"></param>
     protected abstract void ReadFromSeries(ReadOnlySpan<ISeries> series, int rowIndex, Span<TRecord> destination);
 
-    protected abstract void WriteToSeries(ReadOnlySpan<ISeries> series, int rowIndex, ReadOnlySpan<TRecord> source);
-
-    public void Add(TRecord record)
-        => Insert(RowCount, record);
-
-    public void AddRange(ReadOnlySpan<TRecord> records)
-        => InsertRange(RowCount, records);
-
-    public void Insert(int rowIndex, TRecord record)
-    {
-        for(var i = 0; i < _series.Length; ++i)
-        {
-            _series[i].Expand(rowIndex, 1);
-        }
-        _temporaryBuffer[0] = record;
-        WriteToSeries(_series, rowIndex, _temporaryBuffer);
-        ++_generation;
-    }
-
-    public void InsertRange(int rowIndex, ReadOnlySpan<TRecord> records)
-    {
-        for(var i = 0; i < _series.Length; ++i)
-        {
-            _series[i].Expand(rowIndex, records.Length);
-        }
-        WriteToSeries(_series, rowIndex, records);
-        ++_generation;
-    }
-
-    public void RemoveAt(int rowIndex)
-    {
-        for(var i = 0; i < _series.Length; ++i)
-        {
-            _series[i].Shrink(rowIndex, 1);
-        }
-        ++_generation;
-    }
-
-    public void RemoveRange(int rowIndex, int count)
-    {
-        for(var i = 0; i < _series.Length; ++i)
-        {
-            _series[i].Shrink(rowIndex, count);
-        }
-        ++_generation;
-    }
-
-    public void Clear()
-    {
-        for(var i = 0; i < _series.Length; ++i)
-        {
-            _series[i].Clear();
-        }
-        ++_generation;
-    }
-
+    /// <inheritdoc/>
     public override IEnumerable<TRecord> AsEnumerable()
         => new Enumerable(this);
+}
+
+internal class DataFrame<TRecord, TStrategy>(ISeries[] series)
+    : DataFrame<TRecord>(series)
+    where TRecord : ITuple
+    where TStrategy : struct, IRecordStrategy<TRecord>
+{
+    /// <inheritdoc />
+    protected override void ReadFromSeries(ReadOnlySpan<ISeries> series, int rowIndex, Span<TRecord> destination)
+        => TStrategy.ReadFromSeries(series, rowIndex, destination);
 }
