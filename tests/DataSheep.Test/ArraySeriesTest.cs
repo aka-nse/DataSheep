@@ -24,14 +24,14 @@ public class ArraySeriesTest
     [MemberData(nameof(InitializeTestCase))]
     public void Initialize(int capacityRequest, int expectedInitialCapacity)
     {
-        var series = new MutableSeries<int>("", capacityRequest);
+        var series = new ArraySeries<int>("", capacityRequest);
         Assert.Equal(expectedInitialCapacity, series.Capacity);
     }
 
     [Fact]
     public void Expend()
     {
-        var series = new MutableSeries<int>("", 256);
+        var series = new ArraySeries<int>("", 256);
         series.Expand(0, 256);
         Assert.Throws<ArgumentOutOfRangeException>(() => series.Expand(-1, 0));
         Assert.Throws<ArgumentOutOfRangeException>(() => series.Expand(0, -1));
@@ -43,7 +43,7 @@ public class ArraySeriesTest
     [Fact]
     public void Shrink()
     {
-        var series = new MutableSeries<int>("", 256);
+        var series = new ArraySeries<int>("", 256);
         series.Expand(0, 256);
         Assert.Throws<ArgumentOutOfRangeException>(() => series.Shrink(-1, 0));
         Assert.Throws<ArgumentOutOfRangeException>(() => series.Shrink(0, -1));
@@ -55,7 +55,7 @@ public class ArraySeriesTest
     [Fact]
     public void Add()
     {
-        var series = new MutableSeries<int>("", 256);
+        var series = new ArraySeries<int>("", 256);
         for(var i = 0; i < 1024; ++i)
         {
             series.Add(i);
@@ -70,7 +70,7 @@ public class ArraySeriesTest
     [Fact]
     public void AddRange()
     {
-        var series = new MutableSeries<int>("", 256);
+        var series = new ArraySeries<int>("", 256);
         for(var i = 0; i < 1024; i += 256)
         {
             var data = Enumerable.Range(i, 256).ToArray();
@@ -87,7 +87,7 @@ public class ArraySeriesTest
     public void Insert()
     {
         var list = new List<int>();
-        var series = new MutableSeries<int>("", 256);
+        var series = new ArraySeries<int>("", 256);
 
         var data = Enumerable.Range(0, 256).ToArray();
         list.AddRange(data);
@@ -109,7 +109,7 @@ public class ArraySeriesTest
     public void RemoveAt()
     {
         var list = new List<int>();
-        var series = new MutableSeries<int>("", 1024);
+        var series = new ArraySeries<int>("", 1024);
 
         var data = Enumerable.Range(0, 1024).ToArray();
         list.AddRange(data);
@@ -131,9 +131,9 @@ public class ArraySeriesTest
     public void Clear()
     {
         var refs = new List<WeakReference<object>>();
-        var series = new MutableSeries<object>("", 1024);
+        var series = new ArraySeries<object>("", 1024);
 
-        static void innerScope(List<WeakReference<object>> refs, MutableSeries<object> series)
+        static void innerScope(List<WeakReference<object>> refs, ArraySeries<object> series)
         {
             for(var i = 0; i < 1024; ++i)
             {

@@ -1,0 +1,65 @@
+﻿<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ output extension=".g.cs" #>
+namespace DataSheep;
+
+<#
+for(var i = 2; i <= 7; ++i)
+{
+    var typeArgs = CommaChain(i, x => $"T{x}");
+#>
+internal readonly struct ValueTupleTrait<<#=typeArgs#>> : IValueTupleTrait<(<#=typeArgs#>)>
+{
+    public static int ColumnCount => <#=i#>;
+    int IRecordTrait.ColumnCount => <#=i#>;
+
+    public static IReadOnlyList<string> DefaultColumnNames { get; }
+    = new ArraySegment<string>(ValueTupleTrait.DefaultColumnNames, 0, <#=i#>);
+    IReadOnlyList<string> IRecordTrait.DefaultColumnNames => DefaultColumnNames;
+
+    public static IMutableSeries[] CreateSeriesPrefab(int initialCapacity, IReadOnlyList<string> columnNames)
+        => [
+<#  for(var j = 0; j < i; ++j) { #>
+            new ArraySeries<T<#=j+1#>>(columnNames[<#=j#>], initialCapacity),
+<#  } #>
+        ];
+    IMutableSeries[] IRecordTrait<(<#=typeArgs#>)>.CreateSeriesPrefab(int initialCapacity, IReadOnlyList<string> columnNames)
+        => CreateSeriesPrefab(initialCapacity, columnNames);
+
+    public static void ReadFromSeries(ReadOnlySpan<ISeries> series, int rowIndex, Span<(<#=typeArgs#>)> destination)
+    {
+<#  for(var j = 0; j < i; ++j) { #>
+        var ser<#=j+1#> = series[<#=j#>].As<T<#=j+1#>>();
+<#  } #>
+        for(var i = 0; i < destination.Length; i++)
+        {
+            var j = rowIndex + i;
+            destination[i] = (<#=CommaChain(i, x => $"ser{x}[j]")#>);
+        }
+    }
+    void IRecordTrait<(<#=typeArgs#>)>.ReadFromSeries(ReadOnlySpan<ISeries> series, int rowIndex, Span<(<#=typeArgs#>)> destination)
+        => ReadFromSeries(series, rowIndex, destination);
+
+    public static void WriteToSeries(ReadOnlySpan<IMutableSeries> series, int rowIndex, ReadOnlySpan<(<#=typeArgs#>)> source)
+    {
+<#  for(var j = 0; j < i; ++j) { #>
+        var ser<#=j+1#> = series[<#=j#>].As<T<#=j+1#>>();
+<#  } #>
+        for(var i = 0; i < source.Length; i++)
+        {
+            var j = rowIndex + i;
+            (<#=CommaChain(i, x => $"ser{x}[j]")#>) = source[i];
+        }
+    }
+    void IRecordTrait<(<#=typeArgs#>)>.WriteToSeries(ReadOnlySpan<IMutableSeries> series, int rowIndex, ReadOnlySpan<(<#=typeArgs#>)> source)
+        => WriteToSeries(series, rowIndex, source);
+}
+
+<#  } #>
+<#+
+string CommaChain(int end, Func<int, string> predicate)
+    => string.Join(", ", Enumerable.Range(1, end).Select(predicate));
+#>

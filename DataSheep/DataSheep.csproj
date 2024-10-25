@@ -8,19 +8,19 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Update="Internals\ValueTupleStrategy.g.cs">
-            <DesignTime>True</DesignTime>
-            <AutoGen>True</AutoGen>
-            <DependentUpon>ValueTupleStrategy.tt</DependentUpon>
-        </Compile>
-        <None Update="Internals\ValueTupleStrategy.tt">
-            <Generator>TextTemplatingFileGenerator</Generator>
-            <LastGenOutput>ValueTupleStrategy.g.cs</LastGenOutput>
-        </None>
+        <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
     </ItemGroup>
 
     <ItemGroup>
-        <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
+      <None Update="Internals\ValueTupleTraitImpl.tt">
+        <Generator>TextTemplatingFileGenerator</Generator>
+        <LastGenOutput>ValueTupleTraitImpl.g.cs</LastGenOutput>
+      </None>
+      <Compile Update="Internals\ValueTupleTraitImpl.g.cs">
+        <DesignTime>True</DesignTime>
+        <AutoGen>True</AutoGen>
+        <DependentUpon>ValueTupleTraitImpl.tt</DependentUpon>
+      </Compile>
     </ItemGroup>
 
 </Project>

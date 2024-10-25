@@ -1,4 +1,4 @@
-namespace DataSheep;
+﻿namespace DataSheep;
 
 /// <summary>
 /// Implementation of <see cref="ISeries"/> which has data entity which can mutate.
@@ -33,5 +33,5 @@ public interface IMutableSeries : ISeries
     /// <summary> Casts down into concrete series with type argument. </summary>
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
-    public new MutableSeries<T> As<T>();
+    public new ArraySeries<T> As<T>();
 }

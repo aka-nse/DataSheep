@@ -41,5 +41,5 @@ public interface ISeries<T> : ISeries
     public void GetValues(int rowIndex, Span<T> destination);
 
     /// <inheritdoc/>
-    public new MutableSeries<T> Clone();
+    public new ArraySeries<T> Clone();
 }
