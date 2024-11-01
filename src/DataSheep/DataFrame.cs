@@ -10,36 +10,42 @@ public static partial class DataFrame
 }
 
 /// <summary>
-/// The immutable table whose each row can be mapped with <typeparamref name="TRecord"/>.
+/// The readonly table whose each row can be mapped with <typeparamref name="TRecord"/>.
 /// </summary>
 /// <typeparam name="TRecord"></typeparam>
 /// <param name="trait"></param>
 /// <param name="series"></param>
-public sealed class DataFrame<TRecord>(IRecordTrait<TRecord> trait, ISeries[] series)
+public partial class DataFrame<TRecord>(IRecordTrait<TRecord> trait, ISeries[] series)
     : IDataFrame<TRecord>
 {
     private readonly TRecord[] _buffer = new TRecord[1];
 
+    protected IRecordTrait<TRecord> Trait { get; } = trait;
+
+    /// <inheritdoc/>
     public int RowCount => Series[0].Count;
 
     internal ISeries[] Series { get; } = series;
 
+    /// <inheritdoc/>
     public TRecord this[int rowIndex]
     {
         get
         {
-            trait.ReadFromSeries(Series, rowIndex, _buffer);
+            Trait.ReadFromSeries(Series, rowIndex, _buffer);
             return _buffer[0];
         }
     }
 
+    /// <inheritdoc/>
     public void GetRecords(int rowIndex, Span<TRecord> destination)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(rowIndex, nameof(rowIndex));
         ArgumentOutOfRangeException.ThrowIfLessThan(destination.Length, RowCount - rowIndex, nameof(destination));
-        trait.ReadFromSeries(Series, rowIndex, destination);
+        Trait.ReadFromSeries(Series, rowIndex, destination);
     }
 
+    /// <inheritdoc/>
     public TRecord[] GetRecords()
     {
         var records = new TRecord[RowCount];
@@ -47,24 +53,31 @@ public sealed class DataFrame<TRecord>(IRecordTrait<TRecord> trait, ISeries[] se
         return records;
     }
 
-    public IEnumerable<TRecord> AsEnumerable()
+    /// <inheritdoc/>
+    public virtual IEnumerable<TRecord> AsEnumerable()
         => new Enumerable(this);
 
-    public MutableDataFrame<TRecord> CopyAsMutable()
+    /// <inheritdoc/>
+    public Mutable CopyAsMutable()
     {
         var newSeries = new IMutableSeries[Series.Length];
         for(var j = 0; j < newSeries.Length; ++j)
         {
             newSeries[j] = Series[j].Clone();
         }
-        return new(trait, newSeries);
+        return new(Trait, newSeries);
     }
 
-    public DataFrame<TRecord> CopyAsImmutable()
-        => this;
-
-    public DataFrame<TRecord> MoveAsImmutable()
-        => this;
+    /// <inheritdoc/>
+    public virtual Immutable CopyAsImmutable()
+    {
+        var newSeries = new IMutableSeries[Series.Length];
+        for(var j = 0; j < newSeries.Length; ++j)
+        {
+            newSeries[j] = Series[j].Clone();
+        }
+        return new(Trait, newSeries);
+    }
 
 
     private class Enumerable : IEnumerable<TRecord>, IEnumerator<TRecord>

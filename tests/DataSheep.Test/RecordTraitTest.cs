@@ -11,8 +11,8 @@ public class RecordTraitTest
     [Fact]
     public void ForDataRecord()
     {
-        Assert.True(RecordTrait.Cache<ClassRecord>.Trait is ClassRecord.TraitImpl);
-        Assert.True(RecordTrait.Cache<StructRecord>.Trait is StructRecord.TraitImpl);
+        Assert.True(RecordTrait.Cache<TestClassRecord>.Trait is TestClassRecord.TraitImpl);
+        Assert.True(RecordTrait.Cache<TestStructRecord>.Trait is TestStructRecord.TraitImpl);
     }
 
     [Fact]
@@ -46,44 +46,4 @@ public class RecordTraitTest
         Assert.True(RecordTrait.Cache<object>.Trait is FallbackRecordTrait<object>);
         Assert.True(RecordTrait.Cache<int>.Trait is FallbackRecordTrait<int>);
     }
-}
-
-file record class ClassRecord(int A, int B, int C) : IDataRecord<ClassRecord>
-{
-    public class TraitImpl : IRecordTrait<ClassRecord>
-    {
-        public IReadOnlyList<string> DefaultColumnNames
-            => throw new NotImplementedException();
-
-        public IMutableSeries[] CreateSeriesPrefab(int initialCapacity, IReadOnlyList<string> columnNames)
-            => throw new NotImplementedException();
-
-        public void ReadFromSeries(ReadOnlySpan<ISeries> series, int rowIndex, Span<ClassRecord> destination)
-            => throw new NotImplementedException();
-
-        public void WriteToSeries(ReadOnlySpan<IMutableSeries> series, int rowIndex, ReadOnlySpan<ClassRecord> source)
-            => throw new NotImplementedException();
-    }
-
-    public static IRecordTrait<ClassRecord> Trait { get; } = new TraitImpl();
-}
-
-file record struct StructRecord(int A, int B, int C) : IDataRecord<StructRecord>
-{
-    public class TraitImpl : IRecordTrait<StructRecord>
-    {
-        public IReadOnlyList<string> DefaultColumnNames
-            => throw new NotImplementedException();
-
-        public IMutableSeries[] CreateSeriesPrefab(int initialCapacity, IReadOnlyList<string> columnNames)
-            => throw new NotImplementedException();
-
-        public void ReadFromSeries(ReadOnlySpan<ISeries> series, int rowIndex, Span<StructRecord> destination)
-            => throw new NotImplementedException();
-
-        public void WriteToSeries(ReadOnlySpan<IMutableSeries> series, int rowIndex, ReadOnlySpan<StructRecord> source)
-            => throw new NotImplementedException();
-    }
-
-    public static IRecordTrait<StructRecord> Trait { get; } = new TraitImpl();
 }

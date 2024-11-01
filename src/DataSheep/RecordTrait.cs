@@ -4,16 +4,48 @@ using System.Runtime.CompilerServices;
 
 namespace DataSheep;
 
+/// <summary>
+/// Base type for <see cref="IRecordTrait{T}"/>.
+/// </summary>
 public interface IRecordTrait
 {
+    /// <summary> Gets the number of columns when projecting related data record into series. </summary>
     public int ColumnCount => DefaultColumnNames.Count;
+
+    /// <summary> Gets the default column names. </summary>
     public IReadOnlyList<string> DefaultColumnNames { get; }
 }
 
+/// <summary>
+/// Provides proxy methods between record (row-oriented data) and series (column-oriented data) on data frame.
+/// </summary>
+/// <typeparam name="T">
+/// The type of related data record.
+/// </typeparam>
 public interface IRecordTrait<T> : IRecordTrait
 {
+    /// <summary>
+    /// Creates series for the related data record.
+    /// </summary>
+    /// <param name="initialCapacity"></param>
+    /// <param name="columnNames"></param>
+    /// <returns></returns>
     public IMutableSeries[] CreateSeriesPrefab(int initialCapacity, IReadOnlyList<string> columnNames);
+
+    /// <summary>
+    /// Projects series into data record span.
+    /// </summary>
+    /// <param name="series"></param>
+    /// <param name="rowIndex"></param>
+    /// <param name="destination"></param>
     public void ReadFromSeries(ReadOnlySpan<ISeries> series, int rowIndex, Span<T> destination);
+
+    /// <summary>
+    /// Projects data record span into series.
+    /// </summary>
+    /// <param name="series"></param>
+    /// <param name="rowIndex"></param>
+    /// <param name="destination"></param>
     public void WriteToSeries(ReadOnlySpan<IMutableSeries> series, int rowIndex, ReadOnlySpan<T> source);
 }
 
@@ -98,5 +130,4 @@ internal static class RecordTrait
         var traitType = getValueTupleTraitType(tupleType);
         return traitType is { } ? (IRecordTrait)Activator.CreateInstance(traitType)! : null;
     }
-
 }

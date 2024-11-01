@@ -26,6 +26,7 @@ internal ref struct TemporaryBuffer<T>
 {
     private readonly int _count;
     private T[] _array;
+    public T[] Array => _array;
     public readonly Span<T> Span => _array.AsSpan(0, _count);
     public readonly Memory<T> Memory => _array.AsMemory(0, _count);
 

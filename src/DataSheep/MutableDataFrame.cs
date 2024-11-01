@@ -55,13 +55,14 @@ public sealed class MutableDataFrame<TRecord>(IRecordTrait<TRecord> trait, IMuta
         return newSeries;
     }
 
-    public MutableDataFrame<TRecord> CopyAsMutable()
+    public DataFrame<TRecord>.Mutable CopyAsMutable()
         => new(trait, CopySeries());
 
-    public DataFrame<TRecord> CopyAsImmutable()
+
+    public DataFrame<TRecord>.Immutable CopyAsImmutable()
         => new(trait, CopySeries());
 
-    public DataFrame<TRecord> MoveAsImmutable()
+    public DataFrame<TRecord>.Immutable MoveAsImmutable()
         => new(trait, Series);
 
     public void GetRecords(int rowIndex, Span<TRecord> destination)
