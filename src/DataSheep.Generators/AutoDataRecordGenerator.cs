@@ -80,15 +80,13 @@ public partial class AutoDataRecordGenerator : IIncrementalGenerator
             .Select(p => (IParameterSymbol)semanticModel.GetDeclaredSymbol(p, context.CancellationToken)!)
             .ToArray();
 
-        var sb = new StringBuilder();
-        if(!symbol.ContainingNamespace.IsGlobalNamespace)
-        {
-            sb.AppendLine($"""
-                namespace {symbol.ContainingNamespace.Name}";
-                """);
-        }
-        sb.AppendLine($$"""
-                partial class {{symbol.Name}}
+        var generatedNamespace = !symbol.ContainingNamespace.IsGlobalNamespace ? $"""
+                namespace {symbol.ContainingNamespace.ToDisplayString()};
+
+                """ : "";
+        var sourceCode = $$"""
+                {{generatedNamespace}}
+                partial record {{(symbol.IsValueType ? "struct": "class")}} {{symbol.Name}}
                 {
                     public static {{NamespaceName}}.IRecordTrait<{{symbol.Name}}> Trait { get; } = new RecordTrait();
                 }
@@ -96,55 +94,51 @@ public partial class AutoDataRecordGenerator : IIncrementalGenerator
                 file sealed class RecordTrait : {{NamespaceName}}.IRecordTrait<{{symbol.Name}}>
                 {
                     /// <inheritdoc />
-                    public {{NamespaceName}}.IMutableSeries[] CreateSeriesPrefab(int initialCapacity, System.Collections.Generic.IReadOnlyList<string> columnNames)
-                        => new {{NamespaceName}}.IMutableSeries[]{
-                """);
-        foreach(var (p, i) in parameters.Select((p, i) => (p, i)))
-        {
-            sb.AppendLine($$"""
-                            new {{NamespaceName}}.ArraySeries<{{p.Type.ToDisplayString()}}>>(columnNames[{{i}}], initialCapacity),
-                """);
-        }
-        sb.AppendLine($$"""
+                    public IReadOnlyList<string> DefaultColumnNames { get; }
+                        = [
+                            {{parameters.LineJoined(3, (p, i) => $"\"{p.Name}\",")}}
+                        ];
+
+                    /// <inheritdoc />
+                    public {{NamespaceName}}.IMutableSeries CreateSeries(
+                        int columnIndex,
+                        int initialCapacity,
+                        string columnName)
+                        => columnIndex switch {
+                            {{parameters.LineJoined(3, (p, i) => $"{i} => new {NamespaceName}.MutableSeries<{p.Type.ToDisplayString()}>(columnName, initialCapacity),")}}
+                            _ => throw new ArgumentOutOfRangeException(nameof(columnIndex)),
                         };
             
                     /// <inheritdoc />
-                    public void ReadFromSeries(System.ReadOnlySpan<{{NamespaceName}}.ISeries> series, int rowIndex, System.Span<{{symbol.Name}}> destination)
+                    public void ReadFromSeries(
+                        System.ReadOnlySpan<{{NamespaceName}}.ISeries> series,
+                        int rowIndex,
+                        System.Span<{{symbol.Name}}> destination)
                     {
-                """);
-        foreach(var (p, i) in parameters.Select((p, i) => (p, i)))
-        {
-            sb.AppendLine($$"""
-                        var x{{i}} = series[{{i}}].As<{{p.Type.ToDisplayString()}}>();
-                """);
-        }
-        sb.AppendLine($$"""
+                        {{parameters.LineJoined(2, (p, i) => $"var ser{i} = series[{i}];")}}
                         for(var j = 0; j < destination.Length; ++j)
                         {
                             var row = rowIndex + j;
-                            destination[j] = new ({{CommaJoined(1, parameters.Length, i => $"x{i}[row]")}});
+                            destination[j] = new ({{parameters.CommaJoined((p, i) => $"ser{i}.GetValue<{p.Type.ToDisplayString()}>(row)")}});
                         }
                     }
             
                     /// <inheritdoc />
-                    public void WriteToSeries(System.ReadOnlySpan<{{NamespaceName}}.IMutableSeries> series, int rowIndex, System.ReadOnlySpan<{{symbol.Name}}> source)
+                    public void WriteToSeries(
+                        System.ReadOnlySpan<{{NamespaceName}}.IMutableSeries> series,
+                        int rowIndex,
+                        System.ReadOnlySpan<{{symbol.Name}}> source)
                     {
-                """);
-        foreach(var (p, i) in parameters.Select((p, i) => (p, i)))
-        {
-            sb.AppendLine($$"""
-                        var x{{i}} = series[{{i}}].As<{{p.Type.ToDisplayString()}}>();
-                """);
-        }
-        sb.AppendLine($$"""
+                        {{parameters.LineJoined(2, (p, i) => $"var ser{i} = series[{i}];")}}
                         for(var j = 0; j < source.Length; ++j)
                         {
                             var row = rowIndex + j;
-                            ({{CommaJoined(1, parameters.Length, i => $"x{i}[row]")}}) = source[j];
+                            var ({{CommaJoined(0, parameters.Length, i => $"x{i}")}}) = source[j];
+                            {{parameters.LineJoined(3, (p, i) => $"ser{i}.SetValue<{p.Type.ToDisplayString()}>(row, x{i});")}}
                         }
                     }
                 }
-                """);
-        context.AddSource($"{symbol.Name}.Trait.g.cs", sb.ToString());
+                """;
+        context.AddSource($"{symbol.Name}.Trait.g.cs", sourceCode);
     }
 }

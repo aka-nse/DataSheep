@@ -14,34 +14,38 @@ internal class TraitImpl<TRecord> where TRecord : IDataRecordEx<TRecord>
     public IReadOnlyList<string> DefaultColumnNames
         => ["A", "B", "C"];
 
-    public IMutableSeries[] CreateSeriesPrefab(int initialCapacity, IReadOnlyList<string> columnNames)
-        => [
-                new ArraySeries<int>(columnNames[0], initialCapacity),
-                new ArraySeries<int>(columnNames[1], initialCapacity),
-                new ArraySeries<string>(columnNames[2], initialCapacity),
-        ];
+    public IMutableSeries CreateSeries(int columnIndex, int initialCapacity, string columnName)
+        => columnIndex switch {
+            0 => new MutableSeries<int>(columnName, initialCapacity),
+            1 => new MutableSeries<int>(columnName, initialCapacity),
+            2 => new MutableSeries<string>(columnName, initialCapacity),
+            _ => throw new ArgumentOutOfRangeException(nameof(columnIndex)),
+        };
 
     public void ReadFromSeries(ReadOnlySpan<ISeries> series, int rowIndex, Span<TRecord> destination)
     {
-        var a = series[0].As<int>();
-        var b = series[1].As<int>();
-        var c = series[2].As<string>();
+        var a = series[0];
+        var b = series[1];
+        var c = series[2];
         for(var j = 0; j < destination.Length; ++j)
         {
             var row = rowIndex + j;
-            destination[j] = TRecord.Create(a[row], b[row], c[row]);
+            destination[j] = TRecord.Create(a.GetValue<int>(row), b.GetValue<int>(row), c.GetValue<string>(row));
         }
     }
 
     public void WriteToSeries(ReadOnlySpan<IMutableSeries> series, int rowIndex, ReadOnlySpan<TRecord> source)
     {
-        var a = series[0].As<int>();
-        var b = series[1].As<int>();
-        var c = series[2].As<string>();
+        var sa = series[0];
+        var sb = series[1];
+        var sc = series[2];
         for(var j = 0; j < source.Length; ++j)
         {
             var row = rowIndex + j;
-            (a[row], b[row], c[row]) = source[j];
+            var (a, b, c) = source[j];
+            sa.SetValue(row, a);
+            sb.SetValue(row, b);
+            sc.SetValue(row, c);
         }
     }
 }

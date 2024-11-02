@@ -13,21 +13,24 @@ public static partial class DataFrame
 /// The readonly table whose each row can be mapped with <typeparamref name="TRecord"/>.
 /// </summary>
 /// <typeparam name="TRecord"></typeparam>
-/// <param name="trait"></param>
-/// <param name="series"></param>
-public partial class DataFrame<TRecord>(IRecordTrait<TRecord> trait, ISeries[] series)
-    : IDataFrame<TRecord>
+public partial class DataFrame<TRecord>
 {
     private readonly TRecord[] _buffer = new TRecord[1];
 
-    protected IRecordTrait<TRecord> Trait { get; } = trait;
+    protected IRecordTrait<TRecord> Trait { get; }
 
-    /// <inheritdoc/>
+    internal ISeries[] Series { get; }
+
+    /// <summary>
+    /// Gets the current number of rows.
+    /// </summary>
     public int RowCount => Series[0].Count;
 
-    internal ISeries[] Series { get; } = series;
-
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets the record in the specified row.
+    /// </summary>
+    /// <param name="rowIndex"></param>
+    /// <returns></returns>
     public TRecord this[int rowIndex]
     {
         get
@@ -37,7 +40,22 @@ public partial class DataFrame<TRecord>(IRecordTrait<TRecord> trait, ISeries[] s
         }
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Creates a new instance of <see cref="DataFrame{TRecord}"/>.
+    /// </summary>
+    /// <param name="trait"></param>
+    /// <param name="series"></param>
+    protected DataFrame(IRecordTrait<TRecord> trait, ISeries[] series)
+    {
+        Trait = trait;
+        Series = series;
+    }
+
+    /// <summary>
+    /// Gets bulk records in the specified rows.
+    /// </summary>
+    /// <param name="rowIndex"></param>
+    /// <param name="destination"></param>
     public void GetRecords(int rowIndex, Span<TRecord> destination)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(rowIndex, nameof(rowIndex));
@@ -45,7 +63,10 @@ public partial class DataFrame<TRecord>(IRecordTrait<TRecord> trait, ISeries[] s
         Trait.ReadFromSeries(Series, rowIndex, destination);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets all records.
+    /// </summary>
+    /// <returns></returns>
     public TRecord[] GetRecords()
     {
         var records = new TRecord[RowCount];
@@ -53,11 +74,17 @@ public partial class DataFrame<TRecord>(IRecordTrait<TRecord> trait, ISeries[] s
         return records;
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Gets an object which can enumerate all rows in this data frame.
+    /// </summary>
+    /// <returns></returns>
     public virtual IEnumerable<TRecord> AsEnumerable()
         => new Enumerable(this);
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Creates a copy as mutable.
+    /// </summary>
+    /// <returns></returns>
     public Mutable CopyAsMutable()
     {
         var newSeries = new IMutableSeries[Series.Length];
@@ -68,7 +95,10 @@ public partial class DataFrame<TRecord>(IRecordTrait<TRecord> trait, ISeries[] s
         return new(Trait, newSeries);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Creates a copy as immutable.
+    /// </summary>
+    /// <returns></returns>
     public virtual Immutable CopyAsImmutable()
     {
         var newSeries = new IMutableSeries[Series.Length];

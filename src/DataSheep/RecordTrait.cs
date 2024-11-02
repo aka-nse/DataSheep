@@ -14,6 +14,15 @@ public interface IRecordTrait
 
     /// <summary> Gets the default column names. </summary>
     public IReadOnlyList<string> DefaultColumnNames { get; }
+
+    /// <summary>
+    /// Creates series for the related data record.
+    /// </summary>
+    /// <param name="columnIndex"></param>
+    /// <param name="initialCapacity"></param>
+    /// <returns></returns>
+    /// <param name="columnName"></param>
+    public IMutableSeries CreateSeries(int columnIndex, int initialCapacity, string columnName);
 }
 
 /// <summary>
@@ -24,14 +33,6 @@ public interface IRecordTrait
 /// </typeparam>
 public interface IRecordTrait<T> : IRecordTrait
 {
-    /// <summary>
-    /// Creates series for the related data record.
-    /// </summary>
-    /// <param name="initialCapacity"></param>
-    /// <param name="columnNames"></param>
-    /// <returns></returns>
-    public IMutableSeries[] CreateSeriesPrefab(int initialCapacity, IReadOnlyList<string> columnNames);
-
     /// <summary>
     /// Projects series into data record span.
     /// </summary>

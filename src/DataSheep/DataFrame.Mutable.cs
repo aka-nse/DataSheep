@@ -8,12 +8,14 @@ partial class DataFrame<TRecord>
     /// The mutable table whose each row can be mapped with <typeparamref name="TRecord"/>.
     /// </summary>
     /// <typeparam name="TRecord"></typeparam>
-    public sealed class Mutable : DataFrame<TRecord>, IDataFrame<TRecord>
+    public sealed class Mutable : DataFrame<TRecord>
     {
         private int _generation;
 
+        private static ObjectDisposedException ObjectDisposedError() => new ("");
+
         internal new IMutableSeries[] Series
-            => (IMutableSeries[])base.Series ?? throw new ObjectDisposedException("");
+            => (IMutableSeries[])base.Series ?? throw ObjectDisposedError();
         internal IMutableSeries[]? _series;
 
         /// <summary>
@@ -32,9 +34,8 @@ partial class DataFrame<TRecord>
             }
         }
 
-        /// <param name="trait"></param>
-        /// <param name="series"></param>
-        internal Mutable(IRecordTrait<TRecord> trait, IMutableSeries[] series) : base(trait, series)
+        internal Mutable(IRecordTrait<TRecord> trait, IMutableSeries[] series)
+            : base(trait, series)
         {
             _series = series;
         }
@@ -46,7 +47,7 @@ partial class DataFrame<TRecord>
         public Immutable MoveToImmutable()
         {
             var series = Interlocked.Exchange(ref _series, null)
-                ?? throw new ObjectDisposedException("");
+                ?? throw ObjectDisposedError();
             return new Immutable(Trait, series);
         }
 
@@ -54,7 +55,9 @@ partial class DataFrame<TRecord>
         public override IEnumerable<TRecord> AsEnumerable()
             => new Enumerable(this);
 
-        /// <summary></summary>
+        /// <summary>
+        /// Sets bulk records to the specified rows.
+        /// </summary>
         /// <param name="rowIndex"></param>
         /// <param name="source"></param>
         public void SetRecords(int rowIndex, ReadOnlySpan<TRecord> source)
@@ -65,17 +68,23 @@ partial class DataFrame<TRecord>
             ++_generation;
         }
 
-        /// <summary></summary>
+        /// <summary>
+        /// Append the specified record at the tail of rows.
+        /// </summary>
         /// <param name="record"></param>
         public void AddRecord(TRecord record)
             => InsertRecord(RowCount, record);
 
-        /// <summary></summary>
+        /// <summary>
+        /// Append the specified records at the tail of rows.
+        /// </summary>
         /// <param name="records"></param>
         public void AddRecords(ReadOnlySpan<TRecord> records)
             => InsertRecords(RowCount, records);
 
-        /// <summary></summary>
+        /// <summary>
+        /// Inserts the specified record at the specified position of rows.
+        /// </summary>
         /// <param name="rowIndex"></param>
         /// <param name="record"></param>
         public void InsertRecord(int rowIndex, TRecord record)
@@ -84,7 +93,9 @@ partial class DataFrame<TRecord>
             InsertRecords(rowIndex, _buffer);
         }
 
-        /// <summary></summary>
+        /// <summary>
+        /// Inserts the specified records at the specified position of rows.
+        /// </summary>
         /// <param name="rowIndex"></param>
         /// <param name="records"></param>
         public void InsertRecords(int rowIndex, ReadOnlySpan<TRecord> records)
@@ -98,7 +109,9 @@ partial class DataFrame<TRecord>
             ++_generation;
         }
 
-        /// <summary></summary>
+        /// <summary>
+        /// Removes the record at the specified position of rows.
+        /// </summary>
         /// <param name="rowIndex"></param>
         public void RemoveRecord(int rowIndex)
         {
@@ -110,7 +123,9 @@ partial class DataFrame<TRecord>
             ++_generation;
         }
 
-        /// <summary></summary>
+        /// <summary>
+        /// Removes the records at the specified position of rows.
+        /// </summary>
         /// <param name="rowIndex"></param>
         /// <param name="rowCount"></param>
         public void RemoveRecords(int rowIndex, int rowCount)
@@ -124,7 +139,9 @@ partial class DataFrame<TRecord>
             ++_generation;
         }
 
-        /// <summary></summary>
+        /// <summary>
+        /// Clears all records.
+        /// </summary>
         public void Clear()
         {
             foreach(var series in Series)
@@ -180,5 +197,4 @@ partial class DataFrame<TRecord>
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         }
     }
-
 }

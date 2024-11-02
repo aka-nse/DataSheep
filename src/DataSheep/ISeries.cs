@@ -15,31 +15,22 @@ public interface ISeries
     /// <typeparam name="T"></typeparam>
     /// <returns></returns>
     /// <exception cref="InvalidCastException" />
-    public ISeries<T> As<T>();
 
     /// <summary> Clones data into new series. </summary>
     /// <returns></returns>
     public IMutableSeries Clone();
-}
 
-/// <summary>
-/// Provides a concrete surface of column for <see cref="DataFrame{TRecord}"/>.
-/// </summary>
-/// <typeparam name="T"></typeparam>
-public interface ISeries<T> : ISeries
-{
     /// <summary> Gets the element at the specified row index. </summary>
     /// <param name="rowIndex"></param>
     /// <returns></returns>
-    public T this[int rowIndex] { get; }
+    /// <exception cref="InvalidCastException" />
+    public T GetValue<T>(int rowIndex);
 
     /// <summary>
     /// Gets bulkly the elements at the specified range.
     /// </summary>
     /// <param name="rowIndex"></param>
     /// <param name="destination"></param>
-    public void GetValues(int rowIndex, Span<T> destination);
-
-    /// <inheritdoc/>
-    public new ArraySeries<T> Clone();
+    /// <exception cref="InvalidCastException" />
+    public void GetValues<T>(int rowIndex, Span<T> destination);
 }

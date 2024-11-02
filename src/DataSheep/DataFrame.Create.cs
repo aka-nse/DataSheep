@@ -8,7 +8,11 @@ partial class DataFrame
     private static DataFrame<TRecord>.Mutable CreateMutableInternal<TRecord>(IRecordTrait<TRecord> trait, int initialCapacity, IReadOnlyDictionary<int, string> columnNames)
     {
         var names = new ColumnNameList(columnNames, trait.DefaultColumnNames);
-        var series = trait.CreateSeriesPrefab(initialCapacity, names);
+        var series = new IMutableSeries[trait.ColumnCount];
+        for(var i = 0; i < series.Length; ++i)
+        {
+            series[i] = trait.CreateSeries(i, initialCapacity, names[i]);
+        }
         return new(trait, series);
     }
 
@@ -187,24 +191,46 @@ partial class DataFrame
     #endregion
 }
 
+/// <summary>
+/// Provies options to be used with creation of <see cref="DataFrame"/>.
+/// </summary>
+/// <param name="ColumnNames"></param>
 public record class DataRecordOptions(
     IReadOnlyDictionary<int, string> ColumnNames)
 {
+    /// <summary>
+    /// Gets a default instance of <see cref="DataRecordOptions"/>.
+    /// </summary>
     public static DataRecordOptions Default { get; }
         = new([]);
 
+    /// <summary>
+    /// Creates a new instance of <see cref="DataRecordOptions"/>.
+    /// </summary>
+    /// <param name="ColumnNames"></param>
     public DataRecordOptions(IReadOnlyList<string> ColumnNames)
         : this(DataFrame.OptionsHelper.MapColumnNamesFromList(ColumnNames))
     {
     }
 }
 
+/// <summary>
+/// Provies options to be used with creation of <see cref="DataFrame"/>.
+/// </summary>
+/// <param name="ColumnNames"></param>
 public record class ValueTupleOptions(
     IReadOnlyDictionary<int, string> ColumnNames)
 {
+    /// <summary>
+    /// Gets a default instance of <see cref="ValueTupleOptions"/>.
+    /// </summary>
     public static ValueTupleOptions Default { get; }
         = new([]);
 
+    /// <summary>
+    /// Creates a new instance of <see cref="ValueTupleOptions"/>.
+    /// </summary>
+    /// <param name="ColumnNames"></param>
     public ValueTupleOptions(IReadOnlyList<string> ColumnNames)
         : this(DataFrame.OptionsHelper.MapColumnNamesFromList(ColumnNames))
     {

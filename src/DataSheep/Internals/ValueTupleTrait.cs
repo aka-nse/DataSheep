@@ -19,7 +19,7 @@ internal interface IValueTupleTrait<T> : IRecordTrait<T>
 {
     public new static abstract int ColumnCount { get; }
     public new static abstract IReadOnlyList<string> DefaultColumnNames { get; }
-    public new static abstract IMutableSeries[] CreateSeriesPrefab(int initialCapacity, IReadOnlyList<string> columnNames);
+    public new static abstract IMutableSeries CreateSeries(int columnIndex, int initialCapacity, string columnName);
     public new static abstract void ReadFromSeries(ReadOnlySpan<ISeries> series, int rowIndex, Span<T> destination);
     public new static abstract void WriteToSeries(ReadOnlySpan<IMutableSeries> series, int rowIndex, ReadOnlySpan<T> source);
 }
@@ -32,20 +32,19 @@ internal readonly struct ValueTupleTrait<T1> : IValueTupleTrait<ValueTuple<T1>>
     public static IReadOnlyList<string> DefaultColumnNames { get; } = new ArraySegment<string>(ValueTupleTrait.DefaultColumnNames, 0, 1);
     IReadOnlyList<string> IRecordTrait.DefaultColumnNames => DefaultColumnNames;
 
-    public static IMutableSeries[] CreateSeriesPrefab(int initialCapacity, IReadOnlyList<string> columnNames)
-        => [
-            new ArraySeries<T1>(columnNames[0], initialCapacity),
-        ];
-    IMutableSeries[] IRecordTrait<ValueTuple<T1>>.CreateSeriesPrefab(int initialCapacity, IReadOnlyList<string> columnNames)
-        => CreateSeriesPrefab(initialCapacity, columnNames);
+    public static IMutableSeries CreateSeries(int columnIndex, int initialCapacity, string columnName)
+        => columnIndex == 0
+            ? new MutableSeries<T1>(columnName, initialCapacity)
+            : throw new ArgumentOutOfRangeException(nameof(columnIndex));
+    IMutableSeries IRecordTrait.CreateSeries(int columnIndex, int initialCapacity, string columnName)
+        => CreateSeries(columnIndex, initialCapacity, columnName);
 
     public static void ReadFromSeries(ReadOnlySpan<ISeries> series, int rowIndex, Span<ValueTuple<T1>> destination)
     {
-        var ser1 = series[0].As<T1>();
         for(var i = 0; i < destination.Length; i++)
         {
             var j = rowIndex + i;
-            destination[i] = new(ser1[j]);
+            destination[i] = new(series[0].GetValue<T1>(j));
         }
     }
     void IRecordTrait<ValueTuple<T1>>.ReadFromSeries(ReadOnlySpan<ISeries> series, int rowIndex, Span<ValueTuple<T1>> destination)
@@ -53,11 +52,10 @@ internal readonly struct ValueTupleTrait<T1> : IValueTupleTrait<ValueTuple<T1>>
 
     public static void WriteToSeries(ReadOnlySpan<IMutableSeries> series, int rowIndex, ReadOnlySpan<ValueTuple<T1>> source)
     {
-        var ser1 = series[0].As<T1>();
         for(var i = 0; i < source.Length; i++)
         {
             var j = rowIndex + i;
-            ser1[j] = source[i].Item1;
+            series[0].SetValue(j, source[i].Item1);
         }
     }
     void IRecordTrait<ValueTuple<T1>>.WriteToSeries(ReadOnlySpan<IMutableSeries> series, int rowIndex, ReadOnlySpan<ValueTuple<T1>> source)
@@ -87,35 +85,36 @@ internal readonly struct ValueTupleTrait<T1, T2, T3, T4, T5, T6, T7, TRest, TRes
     IReadOnlyList<string> IRecordTrait.DefaultColumnNames
         => DefaultColumnNames;
 
-    public static IMutableSeries[] CreateSeriesPrefab(int initialCapacity, IReadOnlyList<string> columnNames)
-        => [
-            new ArraySeries<T1>(columnNames[0], initialCapacity),
-            new ArraySeries<T2>(columnNames[1], initialCapacity),
-            new ArraySeries<T3>(columnNames[2], initialCapacity),
-            new ArraySeries<T4>(columnNames[3], initialCapacity),
-            new ArraySeries<T5>(columnNames[4], initialCapacity),
-            new ArraySeries<T6>(columnNames[5], initialCapacity),
-            new ArraySeries<T7>(columnNames[6], initialCapacity),
-            .. TRestTrait.CreateSeriesPrefab(initialCapacity, columnNames.Slice(7)),
-            ];
-    IMutableSeries[] IRecordTrait<ValueTuple<T1, T2, T3, T4, T5, T6, T7, TRest>>.CreateSeriesPrefab(int initialCapacity, IReadOnlyList<string> columnNames)
-        => CreateSeriesPrefab(initialCapacity, columnNames);
+    public static IMutableSeries CreateSeries(int columnIndex, int initialCapacity, string columnName)
+        => columnIndex switch
+        {
+            0 => new MutableSeries<T1>(columnName, initialCapacity),
+            1 => new MutableSeries<T2>(columnName, initialCapacity),
+            2 => new MutableSeries<T3>(columnName, initialCapacity),
+            3 => new MutableSeries<T4>(columnName, initialCapacity),
+            4 => new MutableSeries<T5>(columnName, initialCapacity),
+            5 => new MutableSeries<T6>(columnName, initialCapacity),
+            6 => new MutableSeries<T7>(columnName, initialCapacity),
+            _ =>  TRestTrait.CreateSeries(columnIndex - 7, initialCapacity, columnName),
+        };
+    IMutableSeries IRecordTrait.CreateSeries(int columnIndex, int initialCapacity, string columnName)
+        => CreateSeries(columnIndex, initialCapacity, columnName);
 
     public static void ReadFromSeries(ReadOnlySpan<ISeries> series, int rowIndex, Span<ValueTuple<T1, T2, T3, T4, T5, T6, T7, TRest>> destination)
     {
-        var ser1 = series[0].As<T1>();
-        var ser2 = series[1].As<T2>();
-        var ser3 = series[2].As<T3>();
-        var ser4 = series[3].As<T4>();
-        var ser5 = series[4].As<T5>();
-        var ser6 = series[5].As<T6>();
-        var ser7 = series[6].As<T7>();
+        var ser1 = series[0];
+        var ser2 = series[1];
+        var ser3 = series[2];
+        var ser4 = series[3];
+        var ser5 = series[4];
+        var ser6 = series[5];
+        var ser7 = series[6];
         using var tempRest = new TemporaryBuffer<TRest>(destination.Length);
         TRestTrait.ReadFromSeries(series[7..], rowIndex, tempRest.Span);
         for(var i = 0; i < destination.Length; i++)
         {
             var j = rowIndex + i;
-            destination[i] = new(ser1[j], ser2[j], ser3[j], ser4[j], ser5[j], ser6[j], ser7[j], tempRest.Span[i]);
+            destination[i] = new(ser1.GetValue<T1>(j), ser2.GetValue<T2>(j), ser3.GetValue<T3>(j), ser4.GetValue<T4>(j), ser5.GetValue<T5>(j), ser6.GetValue<T6>(j), ser7.GetValue<T7>(j), tempRest.Span[i]);
         }
     }
     void IRecordTrait<ValueTuple<T1, T2, T3, T4, T5, T6, T7, TRest>>.ReadFromSeries(ReadOnlySpan<ISeries> series, int rowIndex, Span<ValueTuple<T1, T2, T3, T4, T5, T6, T7, TRest>> destination)
@@ -123,24 +122,24 @@ internal readonly struct ValueTupleTrait<T1, T2, T3, T4, T5, T6, T7, TRest, TRes
 
     public static void WriteToSeries(ReadOnlySpan<IMutableSeries> series, int rowIndex, ReadOnlySpan<ValueTuple<T1, T2, T3, T4, T5, T6, T7, TRest>> source)
     {
-        var ser1 = series[0].As<T1>();
-        var ser2 = series[1].As<T2>();
-        var ser3 = series[2].As<T3>();
-        var ser4 = series[3].As<T4>();
-        var ser5 = series[4].As<T5>();
-        var ser6 = series[5].As<T6>();
-        var ser7 = series[6].As<T7>();
+        var ser1 = series[0];
+        var ser2 = series[1];
+        var ser3 = series[2];
+        var ser4 = series[3];
+        var ser5 = series[4];
+        var ser6 = series[5];
+        var ser7 = series[6];
         using var tempRest = new TemporaryBuffer<TRest>(source.Length);
         for(var i = 0; i < source.Length; i++)
         {
             var j = rowIndex + i;
-            ser1[j] = source[i].Item1;
-            ser2[j] = source[i].Item2;
-            ser3[j] = source[i].Item3;
-            ser4[j] = source[i].Item4;
-            ser5[j] = source[i].Item5;
-            ser6[j] = source[i].Item6;
-            ser7[j] = source[i].Item7;
+            ser1.SetValue(j, source[i].Item1);
+            ser2.SetValue(j, source[i].Item2);
+            ser3.SetValue(j, source[i].Item3);
+            ser4.SetValue(j, source[i].Item4);
+            ser5.SetValue(j, source[i].Item5);
+            ser6.SetValue(j, source[i].Item6);
+            ser7.SetValue(j, source[i].Item7);
             tempRest.Span[i] = source[i].Rest;
         }
         TRestTrait.WriteToSeries(series[7..], rowIndex, tempRest.Span);

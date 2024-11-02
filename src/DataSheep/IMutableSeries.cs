@@ -1,15 +1,23 @@
-﻿namespace DataSheep;
+namespace DataSheep;
 
 /// <summary>
 /// Implementation of <see cref="ISeries"/> which has data entity which can mutate.
 /// </summary>
 public interface IMutableSeries : ISeries
 {
-    /// <summary> Gets or sets the element at the specified row index. </summary>
+    /// <summary> Sets the element at the specified row index. </summary>
     /// <param name="rowIndex"></param>
     /// <returns></returns>
     /// <exception cref="InvalidCastException" />
-    public object? this[int rowIndex] { get; set; }
+    public void SetValue<T>(int rowIndex, T value);
+
+    /// <summary>
+    /// Sets bulkly the elements at the specified range.
+    /// </summary>
+    /// <param name="rowIndex"></param>
+    /// <param name="source"></param>
+    /// <exception cref="InvalidCastException" />
+    public void SetValues<T>(int rowIndex, ReadOnlySpan<T> source);
 
     /// <summary>
     /// Expands this series.
@@ -29,9 +37,4 @@ public interface IMutableSeries : ISeries
     /// Removes all elements in this series.
     /// </summary>
     public void Clear();
-
-    /// <summary> Casts down into concrete series with type argument. </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <returns></returns>
-    public new ArraySeries<T> As<T>();
 }

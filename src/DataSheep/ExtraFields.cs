@@ -15,7 +15,7 @@ public class ExtraFields
 {
     private readonly object?[] _fields;
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public int Length => _fields.Length;
 
     /// <summary> Returns the value of the specified element. </summary>
@@ -46,7 +46,7 @@ public class ExtraFields<T>
 {
     private readonly T[] _fields;
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public int Length => _fields.Length;
 
     /// <summary> Returns the value of the specified element. </summary>

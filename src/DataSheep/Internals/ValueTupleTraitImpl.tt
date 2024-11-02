@@ -1,4 +1,4 @@
-﻿<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ template debug="false" hostspecific="false" language="C#" #>
 <#@ assembly name="System.Core" #>
 <#@ import namespace="System.Linq" #>
 <#@ import namespace="System.Text" #>
@@ -20,24 +20,25 @@ internal readonly struct ValueTupleTrait<<#=typeArgs#>> : IValueTupleTrait<(<#=t
     = new ArraySegment<string>(ValueTupleTrait.DefaultColumnNames, 0, <#=i#>);
     IReadOnlyList<string> IRecordTrait.DefaultColumnNames => DefaultColumnNames;
 
-    public static IMutableSeries[] CreateSeriesPrefab(int initialCapacity, IReadOnlyList<string> columnNames)
-        => [
+    public static IMutableSeries CreateSeries(int columnIndex, int initialCapacity, string columnName)
+        => columnIndex switch {
 <#  for(var j = 0; j < i; ++j) { #>
-            new ArraySeries<T<#=j+1#>>(columnNames[<#=j#>], initialCapacity),
+            <#=j#> => new MutableSeries<T<#=j+1#>>(columnName, initialCapacity),
 <#  } #>
-        ];
-    IMutableSeries[] IRecordTrait<(<#=typeArgs#>)>.CreateSeriesPrefab(int initialCapacity, IReadOnlyList<string> columnNames)
-        => CreateSeriesPrefab(initialCapacity, columnNames);
+            _ => throw new ArgumentOutOfRangeException(nameof(columnIndex)),
+        };
+    IMutableSeries IRecordTrait.CreateSeries(int columnIndex,int initialCapacity, string columnName)
+        => CreateSeries(columnIndex, initialCapacity, columnName);
 
     public static void ReadFromSeries(ReadOnlySpan<ISeries> series, int rowIndex, Span<(<#=typeArgs#>)> destination)
     {
 <#  for(var j = 0; j < i; ++j) { #>
-        var ser<#=j+1#> = series[<#=j#>].As<T<#=j+1#>>();
+        var ser<#=j+1#> = series[<#=j#>];
 <#  } #>
         for(var i = 0; i < destination.Length; i++)
         {
             var j = rowIndex + i;
-            destination[i] = (<#=CommaChain(i, x => $"ser{x}[j]")#>);
+            destination[i] = (<#=CommaChain(i, x => $"ser{x}.GetValue<T{x}>(j)")#>);
         }
     }
     void IRecordTrait<(<#=typeArgs#>)>.ReadFromSeries(ReadOnlySpan<ISeries> series, int rowIndex, Span<(<#=typeArgs#>)> destination)
@@ -46,12 +47,14 @@ internal readonly struct ValueTupleTrait<<#=typeArgs#>> : IValueTupleTrait<(<#=t
     public static void WriteToSeries(ReadOnlySpan<IMutableSeries> series, int rowIndex, ReadOnlySpan<(<#=typeArgs#>)> source)
     {
 <#  for(var j = 0; j < i; ++j) { #>
-        var ser<#=j+1#> = series[<#=j#>].As<T<#=j+1#>>();
+        var ser<#=j+1#> = series[<#=j#>];
 <#  } #>
         for(var i = 0; i < source.Length; i++)
         {
             var j = rowIndex + i;
-            (<#=CommaChain(i, x => $"ser{x}[j]")#>) = source[i];
+<#  for(var j = 0; j < i; ++j) { #>
+            ser<#=j+1#>.SetValue<T<#=j+1#>>(j, source[i].Item<#=j+1#>);
+<#  } #>
         }
     }
     void IRecordTrait<(<#=typeArgs#>)>.WriteToSeries(ReadOnlySpan<IMutableSeries> series, int rowIndex, ReadOnlySpan<(<#=typeArgs#>)> source)
