@@ -20,11 +20,21 @@ public sealed class MutableSeries<T>
         }
     }
 
-    private void AssertIndex(int rowIndex, int length = 1)
+    private void AssertIndex(int rowIndex)
     {
         if((uint)rowIndex >= (uint)Count)
         {
-            throw new IndexOutOfRangeException();
+            throw new ArgumentOutOfRangeException();
+        }
+    }
+
+    private void AssertRange(Range rowRange)
+    {
+        var start = rowRange.Start.GetOffset(Count);
+        var end = rowRange.End.GetOffset(Count);
+        if(start > end || start < 0 || Count < end)
+        {
+            throw new ArgumentOutOfRangeException();
         }
     }
 
@@ -47,8 +57,8 @@ public sealed class MutableSeries<T>
     /// <returns></returns>
     public T this[int rowIndex]
     {
-        get => (uint)rowIndex < (uint)Count ? _array[rowIndex] : throw new IndexOutOfRangeException();
-        set => _array[rowIndex] = (uint)rowIndex < (uint)Count ? value : throw new IndexOutOfRangeException();
+        get => (uint)rowIndex < (uint)Count ? _array[rowIndex] : throw new ArgumentOutOfRangeException();
+        set => _array[rowIndex] = (uint)rowIndex < (uint)Count ? value : throw new ArgumentOutOfRangeException();
     }
 
     public MutableSeries(string columnName, int initialMinimumCapacity)
@@ -75,7 +85,7 @@ public sealed class MutableSeries<T>
     public void SetValues<S>(int rowIndex, ReadOnlySpan<S> source)
     {
         AssertType<S>();
-        AssertIndex(rowIndex, source.Length);
+        AssertRange(rowIndex..(rowIndex + source.Length));
         source.CopyTo(Unsafe.As<T[], S[]>(ref  _array).AsSpan(rowIndex, source.Length));
     }
 
@@ -88,14 +98,16 @@ public sealed class MutableSeries<T>
     public void GetValues<S>(int rowIndex, Span<S> destination)
     {
         AssertType<S>();
-        AssertIndex(rowIndex, destination.Length);
+        AssertRange(rowIndex..(rowIndex + destination.Length));
+        var count = Math.Min(destination.Length, Count - rowIndex);
+        destination = destination[..count];
         Unsafe.As<T[], S[]>(ref _array).AsSpan(rowIndex, destination.Length).CopyTo(destination);
     }
 
     /// <inheritdoc />
     public void Expand(int rowIndex, int expandCount)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(expandCount, 0);
+        ArgumentOutOfRangeException.ThrowIfNegative(expandCount);
         ArgumentOutOfRangeException.ThrowIfGreaterThan((uint)rowIndex, (uint)Count);
         var newCount = Count + expandCount;
         ExtendBufferIfNeed(newCount);
@@ -109,9 +121,7 @@ public sealed class MutableSeries<T>
     /// <inheritdoc />
     public void Shrink(int rowIndex, int shrinkCount)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(rowIndex, 0);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan((uint)shrinkCount, (uint)Count);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(rowIndex + shrinkCount, Count);
+        AssertRange(rowIndex..(rowIndex+shrinkCount));
         var newCount = Count - shrinkCount;
         if(rowIndex + shrinkCount < Count)
         {

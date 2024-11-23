@@ -12,10 +12,10 @@ public class LazySeries(IRecordTrait trait, int columnIndex, ILazyEvaluator pred
     {
         private readonly IMutableSeries _series;
 
-        public int GlobalStart { get; }
-
         // For each `series[0]` -- `series[255]`,  presents whether the element has been evaluated or not.
-        private FixedBitArray256 _IsRowEvaluated;
+        private FixedBitArray256 _isRowEvaluated;
+
+        public int GlobalStart { get; }
 
         public Chunk(int start, IMutableSeries series)
         {
@@ -27,15 +27,33 @@ public class LazySeries(IRecordTrait trait, int columnIndex, ILazyEvaluator pred
         /// <returns>
         /// If not null, it should be insert into next of this.
         /// </returns>
-        public void GetValues<T>(ILazyEvaluator predicate, int localStart, Span<T> destination)
+        public int GetValues<T>(ILazyEvaluator predicate, int localStart, Span<T> destination)
         {
+            if(destination.IsEmpty)
+            {
+                return 0;
+            }
+            if((uint)_series.Count <= (uint)localStart)
+            {
+                return 0;
+            }
             var localEnd = localStart + destination.Length;
-            if(!_IsRowEvaluated.All(localStart..localEnd))
+            if(_series.Count <= localEnd)
+            {
+                localEnd = _series.Count;
+                destination = destination[..(localEnd - localStart)];
+            }
+            if(!_isRowEvaluated.All(localStart..localEnd))
             {
                 FillValues(predicate, localStart, destination);
             }
+            if(_series.Count <= localEnd)
+            {
+                localEnd = _series.Count;
+                destination = destination[..(localEnd - localStart)];
+            }
             _series.GetValues(localStart, destination);
-            return;
+            return localEnd - localStart;
         }
 
         private void FillValues<T>(ILazyEvaluator predicate, int localStart, Span<T> destination)
@@ -44,8 +62,12 @@ public class LazySeries(IRecordTrait trait, int columnIndex, ILazyEvaluator pred
             var localEnd = localStart + destination.Length;
             while(true)
             {
-                var range = _IsRowEvaluated.GetNextFalseChunk(ref bulkSearchCursor);
+                var range = _isRowEvaluated.GetNextFalseChunk(ref bulkSearchCursor);
                 var s = range.Start.Value;
+                if(_series.Count <= s)
+                {
+                    break;
+                }
                 var e = range.End.Value;
                 var l = Math.Min(e, localEnd) - s;
                 if(l <= 0)
@@ -53,8 +75,15 @@ public class LazySeries(IRecordTrait trait, int columnIndex, ILazyEvaluator pred
                     break;
                 }
                 var chunkBuffer = destination.Slice(s - localStart, l);
-                predicate.EvaluateValues(s, chunkBuffer);
-                _series.SetValues<T>(s, chunkBuffer);
+                var evaluatedCount = predicate.EvaluateValues(s, chunkBuffer);
+                _series.SetValues<T>(s, chunkBuffer[..evaluatedCount]);
+                _isRowEvaluated.BulkSet(s..(s+l), true);
+                if(evaluatedCount < chunkBuffer.Length)
+                {
+                    var tail = s + evaluatedCount;
+                    _series.Shrink(tail, _series.Count - tail);
+                    break;
+                }
             }
         }
     }
@@ -73,17 +102,28 @@ public class LazySeries(IRecordTrait trait, int columnIndex, ILazyEvaluator pred
 
 public interface ILazyEvaluator
 {
-    public void EvaluateValues<T>(int startRowIndex, Span<T> destination)
+    /// <summary>
+    /// Evaluates the values of the specified range and stores them in the destination.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="startRowIndex"></param>
+    /// <param name="destination"></param>
+    /// <returns>
+    /// [<c>0 - destination.Length</c>] The number of elements that have been evaluated actually.
+    /// If less than <c>destination.Length</c>, it means this evaluator reached tail of data.
+    /// </returns>
+    /// <exception cref="InvalidCastException"></exception>
+    public int EvaluateValues<T>(int startRowIndex, Span<T> destination)
     {
         if(this is not ILazyEvaluator<T> @this)
         {
             throw new InvalidCastException();
         }
-        @this.EvaluateValues(startRowIndex, destination);
+        return @this.EvaluateValues(startRowIndex, destination);
     }
 }
 
 public interface ILazyEvaluator<T> : ILazyEvaluator
 {
-    public void EvaluateValues(int startRowIndex, Span<T> destination);
+    public int EvaluateValues(int startRowIndex, Span<T> destination);
 }

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace DataSheep;
 
-public class ArraySeriesTest
+public class MutableSeriesTest
 {
     public static TheoryData<int, int> InitializeTestCase()
         => new()
@@ -64,7 +64,7 @@ public class ArraySeriesTest
         {
             Assert.Equal(i, series[i]);
         }
-        Assert.Throws<IndexOutOfRangeException>(() => series[1024]);
+        Assert.Throws<ArgumentOutOfRangeException>(() => series[1024]);
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public class ArraySeriesTest
         {
             Assert.Equal(i, series[i]);
         }
-        Assert.Throws<IndexOutOfRangeException>(() => series[1024]);
+        Assert.Throws<ArgumentOutOfRangeException>(() => series[1024]);
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public class ArraySeriesTest
         {
             Assert.Equal(list[i], series[i]);
         }
-        Assert.Throws<IndexOutOfRangeException>(() => series[list.Count]);
+        Assert.Throws<ArgumentOutOfRangeException>(() => series[list.Count]);
     }
 
     [Fact]
@@ -124,7 +124,7 @@ public class ArraySeriesTest
         {
             Assert.Equal(list[i], series[i]);
         }
-        Assert.Throws<IndexOutOfRangeException>(() => series[list.Count]);
+        Assert.Throws<ArgumentOutOfRangeException>(() => series[list.Count]);
     }
 
     [Fact]
